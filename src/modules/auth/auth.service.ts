@@ -6,7 +6,6 @@ import AppError from "../../errorHelper/appError.js";
 import { verifyToken } from "../../utils/jwt.js";
 import { createUserTokens } from "../../utils/userTokens.js";
 
-// শুধুমাত্র ড্যাশবোর্ডের জন্য প্রয়োজনীয় ডেটা সিলেক্ট করা হবে
 export const safeUserSelect = {
   id: true,
   name: true,
@@ -20,9 +19,13 @@ export const safeUserSelect = {
 
 // Helpers
 const generateRefreshTokenRecord = async (userId: number, refreshToken: string) => {
-  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+  const decoded = verifyToken(refreshToken, process.env.JWT_REFRESH_SECRET as string);
+  if (!decoded.exp) {
+    throw new Error("Refresh token expiry is missing");
+  }
+
   await db.refreshToken.create({
-    data: { userId, token: refreshToken, expiresAt },
+    data: { userId, token: refreshToken, expiresAt: new Date(decoded.exp * 1000) },
   });
 };
 
@@ -47,7 +50,7 @@ const register = async (payload: { name: string; email: string; password: string
       email: payload.email.toLowerCase(),
       password: hashedPassword,
       github: payload.github,
-      role: "STUDENT", // SECURITY TRICK: Force role to be STUDENT
+      role: "STUDENT", 
     },
     select: safeUserSelect,
   });
@@ -69,7 +72,7 @@ const login = async (payload: { email: string; password: string }) => {
   }
 
   const tokens = await buildTokenResponse(user);
-  const { password, ...safeUser } = user; // Exclude password from response
+  const { password, ...safeUser } = user; 
 
   return { user: safeUser, ...tokens };
 };
@@ -97,7 +100,6 @@ const getNewAccessToken = async (refreshToken: string) => {
 
 const logout = async (refreshToken?: string) => {
   if (refreshToken) {
-    // SECURITY TRICK: Completely remove the token from database on logout
     await db.refreshToken.deleteMany({
       where: { token: refreshToken },
     });

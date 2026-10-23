@@ -29,7 +29,7 @@ export const verifyToken = (
 
   return {
     ...verifiedToken,
-    userId: Number(verifiedToken.userId), // Ensure userId is always a number
+    userId: Number(verifiedToken.userId), 
     email: verifiedToken.email,
     role: verifiedToken.role,
   }

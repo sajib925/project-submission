@@ -31,7 +31,7 @@ async function main() {
       role: "ADMIN",
     },
   });
-  console.log(`✅ Admin created: ${adminEmail}`);
+  console.log(`Admin created: ${adminEmail}`);
 
   // 2. Seed Mentor
   await prisma.user.upsert({
@@ -44,7 +44,7 @@ async function main() {
       role: "MENTOR",
     },
   });
-  console.log(`✅ Mentor created: ${mentorEmail}`);
+  console.log(`Mentor created: ${mentorEmail}`);
 }
 
 main()

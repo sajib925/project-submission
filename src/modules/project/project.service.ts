@@ -2,9 +2,7 @@ import httpStatus from "http-status-codes";
 import { db } from "../../config/db.js";
 import AppError from "../../errorHelper/appError.js";
 
-// ==========================================
 // 1. STUDENT SERVICES
-// ==========================================
 const submitProject = async (studentId: number, payload: any) => {
   const existingName = await db.projectSubmission.findFirst({
     where: { studentId, projectName: payload.projectName },
@@ -35,20 +33,30 @@ const getMySubmissions = async (studentId: number) => {
   });
 };
 
-// ==========================================
 // 2. MENTOR / ADMIN SERVICES
-// ==========================================
 const getAllSubmissions = async (query: any) => {
   const { page = 1, limit = 10, status } = query;
-  
-  const pageNumber = Number(page);
-  const limitNumber = Number(limit);
-  const skip = (pageNumber - 1) * limitNumber;
+
+  const parsePositiveInteger = (value: unknown, fallback: number) => {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, 100) : fallback;
+  };
+
+  const pageNumber = parsePositiveInteger(page, 1);
+  const limitNumber = parsePositiveInteger(limit, 10);
 
   const whereCondition: any = {};
   if (status && status !== "ALL") {
+    if (!["PENDING", "APPROVED", "REJECTED"].includes(String(status))) {
+      throw new AppError(httpStatus.BAD_REQUEST, "Invalid submission status");
+    }
     whereCondition.status = status;
   }
+
+  const total = await db.projectSubmission.count({ where: whereCondition });
+  const totalPage = Math.ceil(total / limitNumber);
+  const currentPage = Math.min(pageNumber, Math.max(totalPage, 1));
+  const skip = (currentPage - 1) * limitNumber;
 
   const submissions = await db.projectSubmission.findMany({
     where: whereCondition,
@@ -62,15 +70,17 @@ const getAllSubmissions = async (query: any) => {
     },
   });
 
-  const total = await db.projectSubmission.count({ where: whereCondition });
-
   return {
-    meta: { page: pageNumber, limit: limitNumber, total, totalPage: Math.ceil(total / limitNumber) },
+    meta: { page: currentPage, limit: limitNumber, total, totalPage },
     data: submissions,
   };
 };
 
 const reviewSubmission = async (reviewerId: number, submissionId: number, payload: { status: "APPROVED" | "REJECTED", feedback?: string }) => {
+  if (!Number.isSafeInteger(submissionId) || submissionId < 1) {
+    throw new AppError(httpStatus.BAD_REQUEST, "Invalid project submission ID");
+  }
+
   const submission = await db.projectSubmission.findUnique({ where: { id: submissionId } });
   
   if (!submission) {
