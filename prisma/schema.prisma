@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// USER & AUTHENTICATION MODELS
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(STUDENT)
+  
+  github    String?  
+  avatar    String?  
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts            Account[]
+  refreshTokens       RefreshToken[]
+  passwordResetTokens PasswordResetToken[]
+  
+  submissions         ProjectSubmission[] @relation("StudentSubmissions")
+  reviewedProjects    ProjectSubmission[] @relation("MentorReviews")
+}
+
+model Account {
+  id                Int       @id @default(autoincrement())
+  userId            Int
+  providerAccountId String
+  accessToken       String?
+  refreshToken      String?
+  expiresAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// PROJECT SUBMISSION & REVIEW MODELS
+
+model ProjectSubmission {
+  id          Int              @id @default(autoincrement())
+  projectName String
+  repoUrl     String           @unique 
+  liveLink    String?
+  description String           @db.Text
+
+  status      SubmissionStatus @default(PENDING)
+  feedback    String?          @db.Text 
+
+  studentId   Int
+  student     User             @relation("StudentSubmissions", fields: [studentId], references: [id], onDelete: Cascade)
+
+  reviewerId  Int?
+  reviewer    User?            @relation("MentorReviews", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([studentId])
+  @@index([status])
+  @@unique([studentId, projectName]) 
+}
+
+// ENUMS
+
+enum Role {
+  STUDENT
+  MENTOR
+  ADMIN
+}
+
+enum SubmissionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
