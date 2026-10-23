@@ -4,10 +4,10 @@ interface CookieTokens {
     refreshToken?: string;
 }
 export declare const cookieOptions: {
-    httpOnly: boolean;
-    secure: boolean;
-    sameSite: "none" | "lax";
-    path: string;
+    readonly httpOnly: true;
+    readonly secure: true;
+    readonly sameSite: "none";
+    readonly path: "/";
 };
 export declare const setAuthCookies: (res: Response, tokens: CookieTokens) => void;
 export declare const clearAuthCookies: (res: Response) => void;
